@@ -5,6 +5,7 @@ import ImageGallery from './ImageGallery/ImageGallery';
 import Button from './Button/Button';
 import Modal from './Modal/Modal';
 import css from './App.module.css';
+import Loader from './Loader/Loader';
 
 export default class App extends Component {
   state = {
@@ -15,25 +16,31 @@ export default class App extends Component {
     isModalOpen: false,
     largeImageUrl: '',
     showBtn: false,
+    isLoading: false,
   };
 
-  async componentDidMount() {
+  componentDidMount() {
     const { page, query } = this.state;
-    await this.fetchImages(page, query);
+    this.fetchImages(page, query);
   }
 
-  async componentDidUpdate(prevProps, prevState) {
+  componentDidUpdate(prevProps, prevState) {
     const { page, query } = this.state;
     if (prevState.page !== page || prevState.query !== query) {
-      await this.fetchImages(page, query);
+      this.fetchImages(page, query);
     }
   }
 
-  fetchImages = async (page, query) => {
-    await getImages(query, page).then(({ hits, totalHits }) => {
-      console.log(hits);
-      this.setState(prevState => ({ images: [...prevState.images, ...hits] }));
-      this.setState({ showBtn: page < Math.ceil(totalHits / 12) });
+  fetchImages = (page, query) => {
+    this.setState({ isLoading: true });
+    getImages(query, page).then(({ hits, totalHits }) => {
+      setTimeout(() => {
+        this.setState(prevState => ({
+          isLoading: false,
+          images: [...prevState.images, ...hits],
+          showBtn: page < Math.ceil(totalHits / 12),
+        }));
+      }, 1000);
     });
   };
 
@@ -78,12 +85,22 @@ export default class App extends Component {
   };
 
   render() {
-    const { images } = this.state;
+    const { images, isLoading } = this.state;
     return (
       <div className={css.App}>
         <Searchbar onSubmit={this.handleSubmit} />
-        {images.length && (
-          <ImageGallery images={images} onImageClick={this.handleImageClick} />
+
+        {!!images.length && (
+          <>
+            <ImageGallery
+              images={images}
+              onImageClick={this.handleImageClick}
+            />
+            {isLoading && <Loader />}
+            {this.state.showBtn && (
+              <Button handleLoadMore={this.handleLoadMore} />
+            )}
+          </>
         )}
 
         {this.state.isModalOpen && (
@@ -93,7 +110,6 @@ export default class App extends Component {
             onClickClose={this.handleModalClickClose}
           />
         )}
-        {this.state.showBtn && <Button handleLoadMore={this.handleLoadMore} />}
       </div>
     );
   }
