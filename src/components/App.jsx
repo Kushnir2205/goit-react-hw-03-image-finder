@@ -1,4 +1,7 @@
-import { Component } from 'react';
+import React, { Component } from 'react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 import { getImages } from 'service/imageApi';
 import Searchbar from './Searchbar/Searchbar';
 import ImageGallery from './ImageGallery/ImageGallery';
@@ -19,11 +22,6 @@ export default class App extends Component {
     isLoading: false,
   };
 
-  componentDidMount() {
-    const { page, query } = this.state;
-    this.fetchImages(page, query);
-  }
-
   componentDidUpdate(prevProps, prevState) {
     const { page, query } = this.state;
     if (prevState.page !== page || prevState.query !== query) {
@@ -31,17 +29,24 @@ export default class App extends Component {
     }
   }
 
-  fetchImages = (page, query) => {
-    this.setState({ isLoading: true });
-    getImages(query, page).then(({ hits, totalHits }) => {
-      setTimeout(() => {
+  fetchImages = async (page, query) => {
+    try {
+      this.setState({ isLoading: true });
+      const { hits, totalHits } = await getImages(query, page);
+
+      if (hits.length === 0) {
+        toast.error('No results found. Please try again.');
+      } else {
         this.setState(prevState => ({
-          isLoading: false,
           images: [...prevState.images, ...hits],
           showBtn: page < Math.ceil(totalHits / 12),
         }));
-      }, 1000);
-    });
+      }
+    } catch (error) {
+      console.log(error);
+    } finally {
+      this.setState({ isLoading: false });
+    }
   };
 
   handleSubmit = query => {
@@ -57,6 +62,7 @@ export default class App extends Component {
       page: prevState.page + 1,
     }));
   };
+
   handleImageClick = largeImageUrl => {
     this.setState({
       largeImageUrl,
@@ -110,6 +116,8 @@ export default class App extends Component {
             onClickClose={this.handleModalClickClose}
           />
         )}
+
+        <ToastContainer autoClose={1000} />
       </div>
     );
   }
